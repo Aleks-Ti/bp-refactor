@@ -2,6 +2,8 @@
 /// что распарсить осталось'
 trait Parser {
     type Dest;
+    // подсказка: здесь можно переделать
+    // на `fn parse<'a>(&self,input:&'a str)->Result<(&'a str, Self::Dest)>`
     fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()>;
 }
 /// Вспомогательный трейт, чтобы писать собственный десериализатор
@@ -33,7 +35,7 @@ mod stdp {
                 })
                 .unwrap_or(remaining.len());
             let value = u32::from_str_radix(&remaining[..end_idx], if is_hex { 16 } else { 10 }).map_err(|_| ())?;
-
+            // подсказка: вместо if можно использовать tight-тип std::num::NonZeroU32
             let value = NonZeroU32::new(value).ok_or(())?.get();
 
             Ok((&remaining[end_idx..], value))
@@ -823,6 +825,7 @@ impl Parsable for Announcements {
     }
 }
 
+// подсказка: почему бы не заменить на один дженерик?
 // Обёртка над парсером, которая позволяет не думать о том, что парсер возвращает пару "оставшаяся строка - результат",
 // а просто возвращать результат
 pub fn just_parse<T>(input: &str) -> Result<(&str, T), ()>
