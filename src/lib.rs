@@ -13,6 +13,7 @@ pub enum ReadMode {
     Exchanges,
 }
 
+#[allow(dead_code)]
 /// Обёртка, без которой не выполнено требование `std::io::BufReader<T: std::io::Read>`
 #[derive(Debug)]
 struct RefMutWrapper<'a, T>(std::cell::RefMut<'a, T>);
@@ -56,10 +57,10 @@ impl<R: std::io::Read> Iterator for LogIterator<R> {
             if trimmed.is_empty() {
                 continue;
             }
-            if let Ok((remaining, result)) = LOG_LINE_PARSER.parse(trimmed) {
-                if remaining.trim().is_empty() {
-                    return Some(result);
-                }
+            if let Ok((remaining, result)) = LOG_LINE_PARSER.parse(trimmed)
+                && remaining.trim().is_empty()
+            {
+                return Some(result);
             }
         }
     }
@@ -71,7 +72,7 @@ pub fn read_log<R: std::io::Read + std::fmt::Debug + 'static>(input: R, mode: Re
     let logs = LogIterator::new(input);
     let mut collected = Vec::new();
     // подсказка: можно обойтись итераторами
-    logs.filter(|log| request_ids.is_empty() || request_ids.iter().any(|request_id| *request_id == log.request_id))
+    logs.filter(|log| request_ids.is_empty() || request_ids.contains(&log.request_id))
         .filter(|log| match mode {
             ReadMode::All => true,
             ReadMode::Errors => matches!(

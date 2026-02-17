@@ -43,6 +43,7 @@ mod stdp {
     }
 
     /// Знаковые числа
+    #[allow(dead_code)]
     #[derive(Debug)]
     pub struct I32;
     impl Parser for I32 {
@@ -75,18 +76,14 @@ mod stdp {
     }
 }
 
+#[allow(dead_code)]
 /// Обернуть строку в кавычки, экранировав кавычки, которые в строке уже есть
 fn quote(input: &str) -> String {
     let mut result = String::from("\"");
-    result.extend(
-        input
-            .chars()
-            .map(|c| match c {
-                '\\' | '"' => ['\\', c].into_iter().take(2),
-                _ => [c, ' '].into_iter().take(1),
-            })
-            .flatten(),
-    );
+    result.extend(input.chars().flat_map(|c| match c {
+        '\\' | '"' => ['\\', c].into_iter().take(2),
+        _ => [c, ' '].into_iter().take(1),
+    }));
     result.push('"');
     result
 }
@@ -114,7 +111,7 @@ fn do_unquote(input: &str) -> Result<(&str, String), ()> {
 }
 /// Распарсить строку, обёрную в кавычки
 /// (сокращённая версия [do_unquote], в которой вложенные кавычки не предусмотрены)
-fn do_unquote_non_escaped<'a>(input: &'a str) -> Result<(&'a str, &'a str), ()> {
+fn do_unquote_non_escaped(input: &str) -> Result<(&str, &str), ()> {
     let input = input.strip_prefix("\"").ok_or(())?;
     let quote_byteidx = input.find('"').ok_or(())?;
     if 0 == quote_byteidx || Some("\\") == input.get(quote_byteidx - 1..quote_byteidx) {
@@ -135,6 +132,8 @@ impl Parser for Unquote {
 fn unquote() -> Unquote {
     Unquote
 }
+
+#[allow(dead_code)]
 /// Парсер, возвращающий результат как есть
 #[derive(Debug, Clone)]
 struct AsIs;
@@ -316,6 +315,8 @@ where
         self.parser.2.parse(remaining).map(|(remaining, a2)| (remaining, (a0, a1, a2)))
     }
 }
+
+#[allow(dead_code)]
 /// Конструктор [All] для трёх парсеров
 /// (в Rust нет чего-то, вроде variadic templates из C++)
 fn all3<A0: Parser, A1: Parser, A2: Parser>(a0: A0, a1: A1, a2: A2) -> All<(A0, A1, A2)> {
@@ -336,11 +337,15 @@ where
         self.parser.3.parse(remaining).map(|(remaining, a3)| (remaining, (a0, a1, a2, a3)))
     }
 }
+
+#[allow(dead_code)]
 /// Конструктор [All] для четырёх парсеров
 /// (в Rust нет чего-то, вроде variadic templates из C++)
 fn all4<A0: Parser, A1: Parser, A2: Parser, A3: Parser>(a0: A0, a1: A1, a2: A2, a3: A3) -> All<(A0, A1, A2, A3)> {
     All { parser: (a0, a1, a2, a3) }
 }
+
+#[allow(clippy::type_complexity)]
 /// Комбинатор, который вытаскивает значения из пары `"ключ":значение,`.
 /// Для простоты реализации, запятая всегда нужна в конце пары ключ-значение,
 /// простое '"ключ":значение' читаться не будет
@@ -589,6 +594,8 @@ where
         self.parser.7.parse(input)
     }
 }
+
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 /// Конструктор [Alt] для восьми парсеров
 /// (в Rust нет чего-то, вроде variadic templates из C++)
 fn alt8<
@@ -655,12 +662,14 @@ impl Parsable for AuthData {
     }
 }
 
+#[allow(dead_code)]
 /// Конструкция 'либо-либо'
 enum Either<Left, Right> {
     Left(Left),
     Right(Right),
 }
 
+#[allow(dead_code)]
 /// Статус, которые можно парсить
 enum Status {
     Ok,
@@ -824,6 +833,7 @@ impl Parsable for Announcements {
     }
 }
 
+#[allow(private_bounds)]
 // подсказка: почему бы не заменить на один дженерик?
 // Обёртка над парсером, которая позволяет не думать о том, что парсер возвращает пару "оставшаяся строка - результат",
 // а просто возвращать результат
@@ -906,11 +916,11 @@ impl Parsable for SystemLogErrorKind {
             alt2(
                 map(
                     preceded(strip_whitespace(tag("NetworkError")), strip_whitespace(unquote())),
-                    |error| SystemLogErrorKind::NetworkError(error),
+                    SystemLogErrorKind::NetworkError,
                 ),
                 map(
                     preceded(strip_whitespace(tag("AccessDenied")), strip_whitespace(unquote())),
-                    |error| SystemLogErrorKind::AccessDenied(error),
+                    SystemLogErrorKind::AccessDenied,
                 ),
             ),
         )
@@ -930,11 +940,11 @@ impl Parsable for SystemLogTraceKind {
             alt2(
                 map(
                     preceded(strip_whitespace(tag("SendRequest")), strip_whitespace(unquote())),
-                    |request| SystemLogTraceKind::SendRequest(request),
+                    SystemLogTraceKind::SendRequest,
                 ),
                 map(
                     preceded(strip_whitespace(tag("GetResponse")), strip_whitespace(unquote())),
-                    |response| SystemLogTraceKind::GetResponse(response),
+                    SystemLogTraceKind::GetResponse,
                 ),
             ),
         )
@@ -954,8 +964,8 @@ impl Parsable for SystemLogKind {
         strip_whitespace(preceded(
             tag("System::"),
             alt2(
-                map(SystemLogTraceKind::parser(), |trace| SystemLogKind::Trace(trace)),
-                map(SystemLogErrorKind::parser(), |error| SystemLogKind::Error(error)),
+                map(SystemLogTraceKind::parser(), SystemLogKind::Trace),
+                map(SystemLogErrorKind::parser(), SystemLogKind::Error),
             ),
         ))
     }
@@ -972,12 +982,13 @@ impl Parsable for AppLogErrorKind {
         preceded(
             tag("Error"),
             alt2(
-                map(preceded(strip_whitespace(tag("LackOf")), strip_whitespace(unquote())), |error| {
-                    AppLogErrorKind::LackOf(error)
-                }),
+                map(
+                    preceded(strip_whitespace(tag("LackOf")), strip_whitespace(unquote())),
+                    AppLogErrorKind::LackOf,
+                ),
                 map(
                     preceded(strip_whitespace(tag("SystemError")), strip_whitespace(unquote())),
-                    |error| AppLogErrorKind::SystemError(error),
+                    AppLogErrorKind::SystemError,
                 ),
             ),
         )
@@ -1006,7 +1017,7 @@ impl Parsable for AppLogTraceKind {
                 ),
                 map(
                     preceded(strip_whitespace(tag("SendRequest")), strip_whitespace(unquote())),
-                    |trace| AppLogTraceKind::SendRequest(trace),
+                    AppLogTraceKind::SendRequest,
                 ),
                 map(
                     preceded(strip_whitespace(tag("Check")), strip_whitespace(Announcements::parser())),
@@ -1014,7 +1025,7 @@ impl Parsable for AppLogTraceKind {
                 ),
                 map(
                     preceded(strip_whitespace(tag("GetResponse")), strip_whitespace(unquote())),
-                    |trace| AppLogTraceKind::GetResponse(trace),
+                    AppLogTraceKind::GetResponse,
                 ),
             ),
         )
@@ -1132,9 +1143,9 @@ impl Parsable for AppLogKind {
         strip_whitespace(preceded(
             tag("App::"),
             alt3(
-                map(AppLogErrorKind::parser(), |error| AppLogKind::Error(error)),
-                map(AppLogTraceKind::parser(), |trace| AppLogKind::Trace(trace)),
-                map(AppLogJournalKind::parser(), |journal| AppLogKind::Journal(journal)),
+                map(AppLogErrorKind::parser(), AppLogKind::Error),
+                map(AppLogTraceKind::parser(), AppLogKind::Trace),
+                map(AppLogJournalKind::parser(), AppLogKind::Journal),
             ),
         ))
     }
@@ -1148,8 +1159,8 @@ impl Parsable for LogKind {
     >;
     fn parser() -> Self::Parser {
         strip_whitespace(alt2(
-            map(SystemLogKind::parser(), |system| LogKind::System(system)),
-            map(AppLogKind::parser(), |app| LogKind::App(app)),
+            map(SystemLogKind::parser(), LogKind::System),
+            map(AppLogKind::parser(), LogKind::App),
         ))
     }
 }
